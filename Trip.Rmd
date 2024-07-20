@@ -1,0 +1,438 @@
+---
+title: "R Notebook"
+output:
+  html_document:
+    df_print: paged
+---
+
+
+```{r}
+library(tidyverse)
+library(astsa)
+library(vars)
+library(fpp)
+library(ggplot2)
+```
+
+
+
+```{r}
+#setwd("/Users/duleepa/Desktop/Time_Series/Project")
+trip_data = readRDS("Monthly_Trip.rds")
+```
+
+```{r}
+head(trip_data)
+```
+
+```{r routes}
+
+ports <- trip_data %>%
+  filter(Port_Name %in% c("Sault Sainte Marie","Detroit","Port Huron", "Buffalo Niagara Falls", "Alexandria Bay", "Ogdensburg", "Massena", "Champlain Rouses Point"))
+
+dim(ports)
+```
+```{r tripsANDports}
+
+S_S_Marie <- ports %>%
+  filter(Port_Name %in% c("Sault Sainte Marie")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+   
+Detroit <- ports %>%
+  filter(Port_Name %in% c("Detroit")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+Port_Huron <- ports %>%
+  filter(Port_Name %in% c("Port Huron")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+B_Niagara <- ports %>%
+  filter(Port_Name %in% c("Buffalo Niagara Falls")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+Alexandria <- ports %>%
+  filter(Port_Name %in% c("Alexandria Bay")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+Ogdensburg <- ports %>%
+  filter(Port_Name %in% c("Ogdensburg")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+Massena <- ports %>%
+  filter(Port_Name %in% c("Massena")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+Champlain_Point <- ports %>%
+  filter(Port_Name %in% c("Champlain Rouses Point")) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE)) %>%
+  group_by(Year, Month) %>%
+  summarise(Total = sum(Value))
+
+S_S_Marie_ts <- ts(S_S_Marie$Total, frequency = 12, start = c(1996, 4))
+Detroit_ts <- ts(Detroit$Total, frequency = 12, start = c(1996, 4))
+Port_Huron_ts <- ts(Port_Huron$Total, frequency = 12, start = c(1996, 4))
+
+B_Niagara_ts <- ts(B_Niagara$Total, frequency = 12, start = c(1996, 4))
+Alexandria_ts <- ts(Alexandria$Total, frequency = 12, start = c(1996, 4))
+Ogdensburg_ts <- ts(Ogdensburg$Total, frequency = 12, start = c(1996, 4))
+Massena_ts <- ts(Massena$Total, frequency = 12, start = c(1996, 4))
+Champlain_Point_ts <- ts(Champlain_Point$Total, frequency = 12, start = c(1996, 4))
+
+```
+
+```{r plottrips}
+# Plot the first time series
+tsplot(S_S_Marie_ts, col = "blue", ylim = c(0, max(c(S_S_Marie_ts, Detroit_ts, Port_Huron_ts))), ylab = "Volume")
+
+# Add the second and third time series to the plot
+lines(Detroit_ts, col = "red")
+lines(Port_Huron_ts, col = "green")
+
+# Add legend
+legend("topright", legend = c("Sault Ste. Marie", "Detroit", "Port Huron"), col = c("blue", "red", "green"), lty = 1)
+```
+```{r all ports}
+#Plot
+tsplot(B_Niagara_ts, col = "blue", ylim = c(0, max(c(S_S_Marie_ts, Detroit_ts, Port_Huron_ts))), ylab = "Volume")
+
+# Add lines with different colors for all ports
+lines(Detroit_ts, col = "green")
+lines(S_S_Marie_ts, col = "purple")
+lines(Port_Huron_ts, col = "orange")
+lines(Alexandria_ts, col = "red")
+lines(Ogdensburg_ts, col = "yellow")
+lines(Massena_ts, col = "cyan")
+lines(Champlain_Point_ts, col = "magenta")
+
+# Add legend
+legend("topright", legend = c("Sault Ste. Marie", "Detroit", "Port Huron", "Alexandria", "Ogdensburg", "Massena", "Champlain Point"), 
+       col = c("blue", "green", "purple", "orange", "red", "yellow", "cyan", "magenta"), lty = 1)
+```
+```{r traffictype}
+Detroit_modes <- ports %>%
+  filter(Port_Name %in% c("Detroit")) %>%
+  group_by(Year, Month, Measure) %>%
+  summarise(Total = sum(Value)) %>%
+  filter(!grepl("Passengers", Measure, ignore.case = TRUE))
+
+#passenger
+Detroit_personal_vehicles <- Detroit_modes %>%
+  filter(Measure %in% "Personal Vehicles")
+
+Detroit_buses <- Detroit_modes %>%
+  filter(Measure %in% "Buses")
+
+Detroit_trains <- Detroit_modes %>%
+  filter(Measure %in% "Trains")
+
+Detroit_personal_vehicles_ts <- ts(Detroit_personal_vehicles$Total, frequency = 12, start = c(1996, 4))
+Detroit_buses_ts <- ts(Detroit_buses$Total, frequency = 12, start = c(1996, 4))
+Detroit_trains_ts <- ts(Detroit_trains$Total, frequency = 12, start = c(1996, 4))
+
+#freight
+Detroit_Trucks <- Detroit_modes %>%
+  filter(Measure %in% "Trucks")
+
+Detroit_Truck_Loaded <- Detroit_modes %>%
+  filter(Measure %in% "Truck Containers Loaded")
+
+Detroit_Truck_Empty <- Detroit_modes %>%
+  filter(Measure %in% "Truck Containers Empty")
+
+Detroit_rail <- Detroit_modes %>%
+  filter(grepl("Rail", Measure, ignore.case = TRUE))
+
+Detroit_Trucks_ts <- ts(Detroit_Trucks$Total, frequency = 12, start = c(1996, 4))
+Detroit_Truck_Loaded_ts <- ts(Detroit_Truck_Loaded$Total, frequency = 12, start = c(1996, 4))
+Detroit_rail_ts <- ts(Detroit_rail$Total, frequency = 12, start = c(1996, 4))
+
+```
+
+```{r}
+# Plot the first time series
+tsplot(Detroit_personal_vehicles_ts, col = "blue", ylim = c(0, max(c(Detroit_personal_vehicles_ts, Detroit_buses_ts, Detroit_trains_ts))), ylab = "Volume")
+
+# Add the second and third time series to the plot
+lines(Detroit_buses_ts, col = "red")
+lines(Port_Huron_ts, col = "green")
+
+# Add legend
+legend("topright", legend = c("Detroit personal vehicles", "Detroit buses", "Detroit trains"), col = c("blue", "red", "green"), lty = 1)
+```
+
+```{r}
+# Plot the first time series
+tsplot(Detroit_Trucks_ts, col = "blue", ylim = c(0, max(c(Detroit_Trucks_ts, Detroit_rail_ts))), ylab = "Volume")
+
+# Add the second and third time series to the plot
+lines(Detroit_rail_ts, col = "red")
+
+
+# Add legend
+legend("topright", legend = c("Detroit Trucks", "Detroit rail"), col = c("blue", "red", "green"), lty = 1)
+```
+
+```{r multivar}
+
+multivariate_trip <- cbind(S_S_Marie, Detroit[,3], Port_Huron[,3], B_Niagara[,3], Alexandria[,3], Ogdensburg[,3], Massena[,3], Champlain_Point[,3])
+colnames(multivariate_trip)[3] <- "S_S_Marie"
+colnames(multivariate_trip)[4] <- "Detroit"
+colnames(multivariate_trip)[5] <- "Port_Huron"
+colnames(multivariate_trip)[6] <- "B_Niagara"
+colnames(multivariate_trip)[7] <- "Alexandria"
+colnames(multivariate_trip)[8] <- "Ogdensburg"
+colnames(multivariate_trip)[9] <- "Massena"
+colnames(multivariate_trip)[10] <- "Champlain_Point"
+```
+
+```{r}
+multivariate_ts <- ts(multivariate_trip[3:10], frequency = 12, start = c(1996, 4))
+class(multivariate_ts)
+```
+
+```{r}
+plot(multivariate_ts)
+```
+
+```{r}
+theme_set(theme_bw())
+autoplot(multivariate_ts) +
+  ggtitle("Port Time-Series") +
+  ylab("Volume") +
+  theme(plot.title = element_text(hjust = 0.5))
+```
+```{r}
+## Testing for stationarity
+library(tidyverse)
+library(lmtest)
+
+adf_results <- apply(multivariate_ts, 2, function(x) adf.test(x)$p.value)
+# p-values based on Port
+(result_table <- tibble(Port = names(adf_results), p_value = adf_results))
+```
+
+```{r}
+library(fGarch)
+library(MTS)
+
+# Differencing the whole mts
+stnry = diffM(multivariate_ts) #difference operation on a vector of time series. Default order of differencing is 1.
+
+# Retest
+adf_stnry_results <- apply(stnry, 2, function(x) adf.test(x)$p.value)
+# p-values based on Port
+(result_table <- tibble(Port = names(adf_stnry_results), p_value = adf_stnry_results))
+```
+
+```{r}
+## VAR modeling
+plot.ts(stnry, main = "Stationary Time Series")
+```
+
+```{r}
+autoplot(ts(stnry,
+            start = c(1996,4),
+            frequency = 12)) +
+  ylab("Volume") +
+  ggtitle("Stationary Time Series")
+```
+
+
+```{r}
+stnry_ts <- ts(stnry, frequency = 12, start = c(1996, 4))
+VARselect(stnry_ts, lag.max=8, type="none")
+```
+```{r}
+# Creating a VAR model with vars
+var.a <- vars::VAR(stnry,
+                   lag.max = 10, season = 12, #highest lag order for lag length selection according to the choosen ic
+                   ic = "AIC", #information criterion
+                   type = "none") #type of deterministic regressors to include
+summary(var.a)
+selected_order <- var.a$selection$ic[1, "lag"]
+
+# Print the selected lag order
+print(selected_order)
+
+```
+
+```{r}
+VARselect(stnry_ts, lag.max=8, type="none", season = 12)$selection
+```
+
+
+```{r}
+var <- vars::VAR(stnry_ts, p=2, season = 12, type = "none", ic = c("SC"))
+summary(var)
+```
+
+
+```{r residual diagnostics}
+# Residual diagnostics
+serial.test(var)
+```
+
+```{r}
+resid.var <- resid(var)
+plot.ts(resid.var,ylab = 'Residuals',xlab='Year')
+
+```
+
+```{r}
+# ACF of residuals
+acf(resid(var), lag.max = 25)
+
+```
+```{r}
+# PACF of residuals
+#pacf(resid.var)
+pacf(resid(var))
+```
+```{r}
+#selecting the variables
+# Granger test for causality
+#for causality function to give reliable results we need all the variables of the multivariate time series to be stationary. 
+# Run the Granger causality tests for each cause variable
+granger_results <- lapply(c("S_S_Marie", "Detroit", "Port_Huron", "B_Niagara", 
+                             "Alexandria", "Ogdensburg", "Massena", "Champlain_Point"),
+                           function(cause_var) {
+                             causality(var.a, cause = cause_var)
+                           })
+
+# Extract p-values for Granger causality and Instant tests for each port
+p_values <- sapply(granger_results, function(result) {
+  c(Granger = result$Granger$p.value, Instant = result$Instant$p.value)
+})
+
+# Convert the p-values into a data frame for better readability
+p_values_df <- as.data.frame(p_values)
+colnames(p_values_df) <- c("S_S_Marie", "Detroit", "Port_Huron", "B_Niagara", 
+                            "Alexandria", "Ogdensburg", "Massena", "Champlain_Point")
+
+# Print or further analyze the results
+print(t(p_values_df))
+```
+
+
+```{r}
+# Forecast next 5 steps
+pred_var <- predict(var, n.ahead = 5, ci = 0.95)
+pred_var
+
+# plot the forecasts
+par(mar=c(3,3,1,1))
+plot(pred_var)
+```
+
+
+```{r}
+# Comparison with univariate AR models #
+
+# time series length for out-of-sample forecasting
+T0 <- 12
+# length of training data set
+T <- dim(multivariate_ts)[1] - T0
+
+ts <- multivariate_ts[1:T,]
+ts1 <- ts[-(1:9),1]
+ts2 <- ts[-(1:9),2]
+
+# univariate prediction
+
+auto.arima(ts2,max.p=5,max.q=5,max.P = 0,max.Q=0,ic="aic",allowmean = TRUE)
+
+auto.arima(ts1,max.p=5,max.q=5,max.P = 0,max.Q=0,ic="aic",allowmean = TRUE)
+#sarima(y,p=0,q=3,P=0,Q=1,S=4,d=0)
+
+#ts1_ar <- sarima(ts1, p=1,q=1,P=0,Q=0,S=12,d=0, include.mean = TRUE, method = "ML")
+#ts2_ar <- sarima(ts2, p=0,q=0,P=0,Q=0,S=12,d=0, include.mean = TRUE, method = "ML")
+
+ts1_ar <- arima(ts1, order=c(1,0,1), include.mean = TRUE, method = "ML")
+ts2_ar <- arima(ts2, order=c(0,0,0), include.mean = TRUE, method = "ML")
+
+ts1.forecast <- predict(ts1_ar, T0)
+ts2.forecast <- predict(ts2_ar, T0)
+
+diff1 <- mean((ts1.forecast$pred[1:T0] - multivariate_ts[(T+1):(T+T0),1])^2)
+diff2 <- mean((ts2.forecast$pred[1:T0] - multivariate_ts[(T+1):(T+T0),2])^2)
+
+# Forecast error from univariate model
+diff1
+diff2
+diff1+diff2
+
+# Prediction using multivariate model
+var0 <- vars::VAR(ts[-(1:9),], p=2, type="both", season = 12)
+pred_var0 <- predict(var0, n.ahead = T0, ci = 0.95)
+
+# Forecast error from multivariate model
+diff1_m <- mean((pred_var0$fcst$S_S_Marie[,1] - multivariate_ts[(T+1):(T+T0),1])^2)
+diff2_m <- mean((pred_var0$fcst$Detroit[,1] - multivariate_ts[(T+1):(T+T0),2])^2)
+diff1_m
+
+```
+
+```{r}
+# Comparison with univariate ARIMA models #
+
+# time series length for out-of-sample forecasting
+T0 <- 12
+# length of training data set
+T <- dim(stnry_ts)[1] - T0
+
+ts <- stnry_ts[1:T, ]
+ts1 <- ts[-(1:9), 1]
+ts2 <- ts[-(1:9), 2]
+
+# Univariate ARIMA model for ts1
+arima_ts1 <- auto.arima(ts1, max.p = 5, max.q = 5, max.P = 0, max.Q = 0, ic = "aic", allowmean = TRUE)
+ts1_ar <- arima(ts1, order = arima_ts1$arma[c(1, 1, 5)], include.mean = TRUE, method = "ML")
+
+# Univariate ARIMA model for ts2
+arima_ts2 <- auto.arima(ts2, max.p = 5, max.q = 5, max.P = 0, max.Q = 0, ic = "aic", allowmean = TRUE)
+ts2_ar <- arima(ts2, order = arima_ts2$arma[c(1, 1, 2)], include.mean = TRUE, method = "ML")
+
+# Forecast using ARIMA models
+ts1_forecast <- predict(ts1_ar, n.ahead = T0)
+ts2_forecast <- predict(ts2_ar, n.ahead = T0)
+
+# Calculate forecast errors for ARIMA models
+diff1_ar <- mean((ts1_forecast$pred - stnry_ts[(T + 1):(T + T0), 1])^2)
+diff2_ar <- mean((ts2_forecast$pred - stnry_ts[(T + 1):(T + T0), 2])^2)
+
+# Multivariate VAR model
+var0 <- vars::VAR(ts[-(1:9), ], p = 2, type = "both", season = 12)
+pred_var0 <- predict(var0, n.ahead = T0, ci = 0.95)
+
+# Forecast errors for VAR model
+diff1_var <- mean((pred_var0$fcst$S_S_Marie[, 1] - stnry_ts[(T + 1):(T + T0), 1])^2)
+diff2_var <- mean((pred_var0$fcst$Detroit[, 1] - stnry_ts[(T + 1):(T + T0), 2])^2)
+diff1_var_multivariate <- mean((pred_var0$fcst$S_S_Marie[, 1] - stnry_ts[(T + 1):(T + T0), 1])^2)
+
+# Create data frame for forecast errors
+forecast_errors <- data.frame(
+  Model = c(rep("ARIMA Univariate", each = 3), rep("VAR Multivariate", each = 3)),
+  Series = rep(c("Yt_1", "Yt_2", "Yt_1 + Yt_2"), 2),
+  Forecast_Error = c(diff1_ar, diff2_ar, diff1_ar + diff2_ar, diff1_var, diff2_var, diff1_var + diff2_var)
+)
+
+# Print forecast errors table
+print(forecast_errors)
+
+
+```
+
